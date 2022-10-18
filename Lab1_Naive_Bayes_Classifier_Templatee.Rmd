@@ -1,0 +1,402 @@
+---
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+# --------------------------------------------------------------
+#     Made by OMELCHUK OLEH, ZINCHUK YURII, HREBENIUK DMYTRO
+# --------------------------------------------------------------
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Probability and Statistics
+
+# Lab Assignment 1: Naive Bayes Classifier
+
+### *Name1 Surname1, Name2 Surname2, Name3 Surname3*
+
+## Introduction
+
+During the past three weeks, you learned a couple of essential notions
+and theorems, and one of the most important among them is the *Bayes
+theorem*.
+
+One of its applications is **Naive Bayes classifier**, which is a
+probabilistic classifier whose aim is to determine which class some
+observation probably belongs to by using the Bayes formula:
+$$\mathsf{P}(\mathrm{class}\mid \mathrm{observation})=\frac{\mathsf{P}(\mathrm{observation}\mid\mathrm{class})\mathsf{P}(\mathrm{class})}{\mathsf{P}(\mathrm{observation})}$$
+
+Under the strong independence assumption, one can calculate
+$\mathsf{P}(\mathrm{observation} \mid \mathrm{class})$ as
+$$\mathsf{P}(\mathrm{observation}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i), \qquad \mathsf{P}(\mathrm{observation} \mid \mathrm{class}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i \mid \mathrm{class}),$$
+where $n$ is the total number of features describing a given
+observation. Thus, $\mathsf{P}(\mathrm{class}|\mathrm{observation})$ now
+can be calculated as
+
+$$\mathsf{P}(\mathrm{class} \mid \mathrm{\mathrm{observation}}) = \mathsf{P}(\mathrm{class})\times \prod_{i=1}^{n}\frac{\mathsf{P}(\mathrm{feature}_i\mid \mathrm{class})}{\mathsf{P}(\mathrm{feature}_i)}\tag{1}$$
+
+All the terms on the right-hand side can be estimated from the data as
+respective relative frequencies;\
+see [this
+site](https://monkeylearn.com/blog/practical-explanation-naive-bayes-classifier/)
+for more detailed explanations.
+
+## Data description
+
+There are 5 datasets uploaded on the cms.
+
+To determine your variant, take your team number from the list of teams
+on cms and take *mod 5* - this is the number of your data set.
+
+-   **0 - authors** This data set consists of citations of three famous
+    writers: Edgar Alan Poe, Mary Wollstonecraft Shelley and HP
+    Lovecraft. The task with this data set is to classify a piece of
+    text with the author who was more likely to write it.
+
+-   **1 - discrimination** This data set consists of tweets that have
+    discriminatory (sexism or racism) messages or of tweets that are of
+    neutral mood. The task is to determine whether a given tweet has
+    discriminatory mood or does not.
+
+-   **2 - fake news** This data set contains data of American news: a
+    headline and an abstract of the article. Each piece of news is
+    classified as fake or credible. The task is to classify the news
+    from test.csv as credible or fake.
+
+-   **3 - sentiment** All the text messages contained in this data set
+    are labeled with three sentiments: positive, neutral or negative.
+    The task is to classify some text message as the one of positive
+    mood, negative or neutral.
+
+-   **4 - spam** This last data set contains SMS messages classified as
+    spam or non-spam (ham in the data set). The task is to determine
+    whether a given message is spam or non-spam.
+
+Each data set consists of two files: *train.csv* and *test.csv*. The
+first one you will need find the probabilities distributions for each of
+the features, while the second one is needed for checking how well your
+classifier works.
+
+```{r}
+# here goes a list of recommended libraries,
+# though you may install other ones if they are needed
+
+# install.packages("tidytext")
+# install.packages("dplyr")
+# install.packages("readr")
+# install.packages("ggplot2")
+# install.packages("stringr")
+# install.packages("crayon")
+
+
+library(tidytext)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(crayon)
+```
+
+## Instructions
+
+-   The first step is data pre-processing, which includes removing
+    punctuation marks and stop words
+
+-   represent each message as a bag-of-words
+
+-   using the training set, calculate all the conditional probabilities
+    in formula (1)
+
+-   use those to predict classes for messages in the test set
+
+-   evaluate effectiveness of the classifier by calculating the
+    corresponding metrics
+
+-   shortly summarize your work
+
+-   do not forget to submit both the (compiled) Rmd source file and the
+    .html output
+
+### Data pre-processing
+
+-   Read the *.csv* data files.
+-   Сlear your data from punctuation or other unneeded symbols.
+-   Clear you data from stop words. You don't want words as is, and, or
+    etc. to affect your probabilities distributions, so it is a wise
+    decision to get rid of them. Find list of stop words in the cms
+    under the lab task.
+-   Represent each test message as its bag-of-words. Here:
+    <https://machinelearningmastery.com/gentle-introduction-bag-words-model/>
+    you can find general introduction to the bag-of-words model and
+    examples on to create it.
+-   It is highly recommended to get familiar with R dataframes, it would
+    make the work much easier to do.
+-   Useful links:
+    -   <https://steviep42.github.io/webscraping/book/bagofwords.html#tidytext> -
+        example of using *tidytext* to count frequencies of the words.
+    -   Basics of Text Mining in R:
+        <http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html>
+        . Note that it also includes an example on how to create a bag
+        of words from your text document.
+
+```{r}
+list.files(getwd())
+list.files("data/0-authors")
+```
+
+```{r}
+test_path <- "Data/test.csv"
+train_path <- "Data/train.csv"
+
+stop_words <- read_file("Data/stop_words.txt")
+# https://stackoverflow.com/questions/27195912/why-does-strsplit-return-a-list
+splitted_stop_words <- strsplit(stop_words, split='\n')
+splitted_stop_words <- splitted_stop_words[[1]]
+```
+
+```{r}
+train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
+test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
+```
+
+```{r}
+# note the power functional features of R bring us! 
+tidy_text <- unnest_tokens(train, 'splitted', 'text', token="words") %>%
+             filter(!splitted %in% splitted_stop_words)
+```
+
+### Data visualization
+
+Each time you work with some data, you need to understand it before you
+start processing it. R has very powerful tools to make nice plots and
+visualization. Show what are the most common words for negative and
+positive examples as a histogram, word cloud etc. Be creative!
+
+```{r}
+positive_words <- head((tidy_text %>% filter(sentiment == "positive") %>% count(splitted, sort = TRUE)), 8)
+neutral_words <- head((tidy_text %>% filter(sentiment == "neutral") %>% count(splitted, sort = TRUE)), 8)
+negative_words <- head((tidy_text %>% filter(sentiment == "negative") %>% count(splitted, sort = TRUE)), 8)
+
+barplot(positive_words$n, names.arg=positive_words$splitted, main="Most Frequent Words In Positive Sentiments")
+barplot(neutral_words$n, names.arg=neutral_words$splitted, main="Most Frequent Words In Neutral Sentiments")
+barplot(negative_words$n, names.arg=negative_words$splitted, main="Most Frequent Words In Negative Sentiments")
+```
+
+## Classifier implementation
+
+```{r}
+naiveBayes <- setRefClass("naiveBayes",
+                          
+       # here it would be wise to have some vars to store intermediate result
+       # frequency dict etc. Though pay attention to bag of wards! 
+       fields = list(positive_data="data.frame",negative_data="data.frame",neutral_data="data.frame", prob_positive = "numeric",prob_negative = "numeric",prob_neutral = "numeric",unknown_word_count="numeric",all_word_count="numeric",
+       precision_positive="numeric", precision_neutral="numeric", precision_negative="numeric", f1_positive="numeric", f1_neutral="numeric", f1_negative="numeric",
+       recall_positive="numeric", recall_neutral="numeric", recall_negative="numeric"),
+       methods = list(
+      # prepare your training data as X - bag of words for each of your
+      # messages and corresponding label for the message encoded as 0 or 1 
+      # (binary classification task)
+      fit = function(data)
+      {
+           positive_data <<- data %>% 
+                       filter(sentiment =="positive")%>% 
+                       count(splitted,sort=TRUE)
+           negative_data <<- data %>% 
+                       filter(sentiment =="negative")%>% 
+                       count(splitted,sort=TRUE)
+           neutral_data <<- data %>% 
+                       filter(sentiment =="neutral")%>% 
+                       count(splitted,sort=TRUE)
+           
+           unique_count = nrow(data %>% count(splitted))
+           positive_data$prob <<- (positive_data$n+1)/(sum(positive_data$n)+unique_count)
+           negative_data$prob <<- (negative_data$n+1)/(sum(negative_data$n)+unique_count)
+           neutral_data$prob <<- (neutral_data$n+1)/(sum(neutral_data$n)+unique_count)
+           
+           prob_positive<<- nrow(train %>% filter(sentiment =="positive")) / nrow(train)
+           prob_negative<<- nrow(train %>% filter(sentiment =="negative")) / nrow(train)
+           prob_neutral<<- nrow(train %>% filter(sentiment =="neutral")) / nrow(train)
+      },
+      
+      predict = function(msg)
+      {
+           msg <- gsub("[`[:punct:]]", '', msg)
+           words = str_split(tolower(msg)," ")[[1]]
+           words = words[!words %in% splitted_stop_words]
+           
+           pos = prob_positive
+           neg = prob_negative
+           neut = prob_neutral
+           for(word in words){
+             all_word_count<<-all_word_count+1
+             if(!word %in% positive_data$splitted | !word %in% negative_data$splitted | !word %in% neutral_data$splitted)
+               unknown_word_count <<- unknown_word_count+1
+             
+             if(word %in% positive_data$splitted)
+               pos = pos*positive_data$prob[
+                  which(positive_data$splitted==word)]
+             else
+               pos = pos/(nrow(tidy_text)+sum(positive_data$n))
+             
+             if(word %in% negative_data$splitted)
+               neg = neg*negative_data$prob[
+                  which(negative_data$splitted==word)]
+             else
+               neg = neg/(nrow(tidy_text)+sum(negative_data$n))
+             
+             if(word %in% neutral_data$splitted)
+               neut = neut*neutral_data$prob[
+                  which(neutral_data$splitted==word)]
+             else
+               neut = neut/(nrow(tidy_text)+sum(neutral_data$n))
+           }
+
+           if(max(pos,neg,neut)==pos)
+             return("positive")
+           else if(max(pos,neg,neut)==neg)
+             return("negative")
+           else
+             return("neutral")
+             
+      },
+      
+      # score you test set so to get the understanding how well you model
+      # works.
+      # look at f1 score or precision and recall
+      # visualize them 
+      # try how well your model generalizes to real world data! 
+      score = function(test)
+      {
+           unknown_word_count<<-0
+           all_word_count<<-0
+           test$guess = apply(test["text"], FUN = .self$predict, MARGIN = 1)
+           test = test[c("text","sentiment","guess")] #swap rows
+       
+           cat("Unknown words:",unknown_word_count,"\n")
+           cat("All words:",all_word_count,"\n")
+    
+           correctly_guessed = nrow(test %>% filter(test$guess==test$sentiment))
+           wrongly_guessed = nrow(test %>% filter(test$guess!=test$sentiment))
+           correct_rate = correctly_guessed/(correctly_guessed+wrongly_guessed)
+           
+           correctly_guessed_positive = nrow(test %>% filter(test$sentiment=="positive" & test$guess==test$sentiment))
+           overall_positive = nrow(test %>% filter(test$sentiment=="positive"))
+           recall_positive <<- correctly_guessed_positive/overall_positive
+           
+           correctly_guessed_negative = nrow(test %>% filter(test$sentiment=="negative" & test$guess==test$sentiment))
+           overall_negative = nrow(test %>% filter(test$sentiment=="negative"))
+           recall_negative <<- correctly_guessed_negative/overall_negative
+           
+           correctly_guessed_neutral = nrow(test %>% filter(test$sentiment=="neutral" & test$guess==test$sentiment))
+           overall_neutral = nrow(test %>% filter(test$sentiment=="neutral"))
+           recall_neutral <<- correctly_guessed_neutral/overall_neutral
+           
+           cat(green("Recall positive:",recall_positive,"\n"))
+           cat(red("Recall negative:",recall_neutral,"\n"))
+           cat(yellow("Recall neutral:",recall_negative,"\n\n"))
+           
+           guessed_positive = nrow(test %>% filter(test$guess=="positive"))
+           precision_positive <<- correctly_guessed_positive/guessed_positive
+           
+           guessed_negative = nrow(test %>% filter(test$guess=="negative"))
+           precision_negative <<- correctly_guessed_negative/guessed_negative
+           
+           guessed_neutral = nrow(test %>% filter(test$guess=="neutral"))
+           precision_neutral <<- correctly_guessed_neutral/guessed_neutral
+           
+           cat(green("Guessed positive:",guessed_positive,"\n"))
+           cat(red("Guessed negative:",guessed_negative,"\n"))
+           cat(yellow("Guessed neutral:",guessed_neutral,"\n\n"))
+           
+           cat(green("Precision positive:",precision_positive,"\n"))
+           cat(red("Precision negative:",precision_negative,"\n"))
+           cat(yellow("Precision neutral:",precision_neutral,"\n\n"))
+           
+           f1_positive <<- 2*precision_positive*recall_positive/(precision_positive+recall_positive)
+           f1_negative <<- 2*precision_negative*recall_negative/(precision_negative+recall_negative)
+           f1_neutral <<- 2*precision_neutral*recall_neutral/(precision_neutral+recall_neutral)
+           
+           cat(green("F1 positive:",f1_positive,"\n"))
+           cat(red("F1 negative:",f1_negative,"\n"))
+           cat(yellow("F1 neutral:",f1_neutral,"\n\n"))
+      }
+))
+
+
+model = naiveBayes()
+model$fit(tidy_text)
+model$score(test)
+```
+
+## Measure effectiveness of your classifier
+
+-   Note that accuracy is not always a good metric for your classifier.
+    Look at precision and recall curves, F1 score metric.
+-   Visualize them.
+-   Show failure cases.
+
+```{r}
+sentiment <- c("positive", "neutral", "negative")
+model$precision_negative
+precision <- c(model$precision_positive, model$precision_neutral, model$precision_negative)
+recall <- c(model$recall_positive, model$recall_neutral, model$recall_negative)
+f1 <- c(model$f1_positive, model$f1_neutral, model$f1_negative)
+
+metrics <- data.frame(sentiment, precision, recall, f1)
+
+barplot(metrics$precision, names.arg=metrics$sentiment, main="Precision")
+barplot(metrics$recall, names.arg=metrics$sentiment, main="Recall")
+barplot(metrics$f1, names.arg=metrics$sentiment, main="F1")
+
+```
+
+## Conclusions
+
+Summarize your work by explaining in a few sentences the points listed
+below.
+
+-   Describe the method implemented in general. Show what are
+    mathematical foundations you are basing your solution on.
+-   List pros and cons of the method. This should include the
+    limitations of your method, all the assumption you make about the
+    nature of your data etc.
+
+We implemented Naive Bayes Classifier to predict the sentiment of a message.
+To do that we used Bayes formula from our PS course. To be more specific, we 
+conditioned the sentiment of the message on the words in it. To do that we 
+took our training data set, counted how many times each word from it occured
+in each sentiment. Then we created three data frames (one for each sentiment):
+each containing words that occurred in messages of corresponding sentiment, their
+frequency and their relative probability to appear in this sentiment. We also 
+calculated probability of message of each sentiment to occur. This was the "training"
+of our model.
+
+After that we predicted sentiment of a given message by calculating it's probability
+to occur in each sentiment's message and choosing the biggest. This was done by
+multiplying each word's from the message probability to occur in the particular sentiment's message
+for each sentiment separately. This gave us probability of the message to occur in
+the sentiment. Then we had to multiply it by probability of occurance of
+corresponding sentiment. Then we chose the biggest probability and returned 
+corresponding sentiment.
+
+Pros and Cons:
+
+Pros of this method are:
+It is fairly easy to implement and therefore is good for learning purposes. 
+It is also good at showing how to apply theoretical knowledge to solve real-life problems.
+
+Cons of this method are:
+It isn't accurate for predicting data when it is disbalances and especially when
+there are more than to classes to predict. Also, it doesn't take into account the grammar
+structures, words bindings and effect that words have on each other in the sentence.
+Hence, it only looks on the words itself, ignoring the greater meaning. This results
+in poor quality of the model. Well, at least in our case.
+It also handles poorly the situation when the dataset is imbalanced in a different way 
+in training and testing datasets. For example, in our training dataset, the ratio of 
+negative messages to all messages was extremely low, whereas in the testing set it was
+bigger. This caused problems when predicting for negative cases, as you can see on 
+metrics' bar charts. Also, we noticed a big confusion between positive and neutral messages,
+because the line between them is not that clear and our model cannot handle that very well.
